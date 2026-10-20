@@ -28,6 +28,20 @@ async function findLink(slug: string) {
   return row ?? null;
 }
 
+/**
+ * One person clicking a link over and over should count only a few times.
+ * A cookie scoped to this link's path holds "count.windowEndSeconds", so we
+ * can recognise repeat visits without storing anything about the visitor.
+ */
+const VISITOR_COOKIE = "v";
+const VISITOR_WINDOW_S = 24 * 60 * 60;
+
+function readVisitor(request: NextRequest, now: number) {
+  const [count, until] = (request.cookies.get(VISITOR_COOKIE)?.value ?? "").split(".").map(Number);
+  if (!until || until <= now) return { count: 0, until: now + VISITOR_WINDOW_S };
+  return { count: count || 0, until };
+}
+
 export async function GET(request: NextRequest, ctx: RouteContext<"/[slug]">) {
   const { slug } = await ctx.params;
   const notFound = NextResponse.redirect(new URL("/link-not-found", request.url), 302);
@@ -37,9 +51,26 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/[slug]">) {
   const link = await findLink(slug);
   if (!link) return notFound;
 
+  // 302, not 301: browsers cache 301s and would skip us on repeat visits, losing those clicks.
+  const response = NextResponse.redirect(link.url, 302);
+  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("Referrer-Policy", "unsafe-url");
+
+  const now = Math.floor(Date.now() / 1000);
+  const visitor = readVisitor(request, now);
+  const perVisitor = Number(process.env.CLICKS_PER_VISITOR) || 3;
+
   // Read everything we need from the request now, then log after the redirect is sent.
   const userAgent = request.headers.get("user-agent") ?? "";
-  if (!isBotRequest(userAgent)) {
+  if (!isBotRequest(userAgent) && visitor.count < perVisitor) {
+    response.cookies.set(VISITOR_COOKIE, `${visitor.count + 1}.${visitor.until}`, {
+      path: `/${slug}`,
+      maxAge: visitor.until - now,
+      httpOnly: true,
+      secure: (process.env.NEXT_PUBLIC_APP_URL ?? "").startsWith("https://"),
+      sameSite: "lax",
+    });
+
     const info = parseClick(request.headers);
     after(async () => {
       try {
@@ -54,9 +85,5 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/[slug]">) {
     });
   }
 
-  // 302, not 301: browsers cache 301s and would skip us on repeat visits, losing those clicks.
-  const response = NextResponse.redirect(link.url, 302);
-  response.headers.set("Cache-Control", "private, no-store");
-  response.headers.set("Referrer-Policy", "unsafe-url");
   return response;
 }
