@@ -1,6 +1,6 @@
 -- Link shortener schema for MySQL 8 / MariaDB 10.5+
 -- Import this file in phpMyAdmin (select your database > Import tab).
--- It matches drizzle/0000_init.sql; use one or the other, not both.
+-- It matches the migrations in drizzle/; use one or the other, not both.
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -39,4 +39,21 @@ CREATE TABLE IF NOT EXISTS `clicks` (
   PRIMARY KEY (`id`),
   KEY `clicks_link_time_idx` (`link_id`, `clicked_at`),
   CONSTRAINT `clicks_link_id_links_id_fk` FOREIGN KEY (`link_id`) REFERENCES `links` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Clicks older than 7 days are folded into per-day counts here by the app:
+-- one row per link, day and combination of country/platform/device/os/browser/referrer.
+-- Safe to re-import this whole file on an existing database: it only adds missing tables.
+CREATE TABLE IF NOT EXISTS `click_daily` (
+  `link_id` bigint unsigned NOT NULL,
+  `day` date NOT NULL,
+  `country` char(2) NOT NULL DEFAULT '',
+  `platform` varchar(32) NOT NULL,
+  `device` varchar(16) NOT NULL,
+  `os` varchar(32) NOT NULL,
+  `browser` varchar(32) NOT NULL,
+  `referrer_host` varchar(255) NOT NULL DEFAULT '',
+  `clicks` int unsigned NOT NULL,
+  PRIMARY KEY (`link_id`, `day`, `country`, `platform`, `device`, `os`, `browser`, `referrer_host`),
+  CONSTRAINT `click_daily_link_id_links_id_fk` FOREIGN KEY (`link_id`) REFERENCES `links` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
