@@ -1,0 +1,100 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { deleteLink } from "@/app/actions/links";
+import { BarList, DailyChart, StatCard } from "@/components/charts";
+import { CopyButton } from "@/components/copy-button";
+import { RangeTabs } from "@/components/range-tabs";
+import { getCurrentUser } from "@/lib/auth";
+import { getLinkStats, parseRange } from "@/lib/stats";
+import { countryName, formatDate, formatNumber, prettyUrl } from "@/lib/format";
+import { shortUrl } from "@/lib/links";
+
+export const metadata: Metadata = { title: "Link stats · Shortly" };
+
+export default function LinkStatsPage(props: PageProps<"/dashboard/links/[id]">) {
+  return (
+    <div className="space-y-6">
+      <Link href="/dashboard" className="text-sm font-medium text-muted hover:text-ink">
+        ← All links
+      </Link>
+      <Suspense fallback={<div className="card h-96 animate-pulse" />}>
+        <Stats {...props} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function Stats({ params, searchParams }: PageProps<"/dashboard/links/[id]">) {
+  const user = await getCurrentUser();
+  const { id } = await params;
+  const range = parseRange((await searchParams).range);
+  const linkId = Number(id);
+  if (!Number.isInteger(linkId)) notFound();
+
+  const s = await getLinkStats(user.id, linkId, range);
+  if (!s) notFound();
+
+  const short = shortUrl(s.link.slug);
+  const basePath = `/dashboard/links/${s.link.id}`;
+
+  return (
+    <div className="space-y-6">
+      <header className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
+        <div className="min-w-0 flex-1 space-y-1">
+          {s.link.title && <h1 className="truncate text-xl font-semibold tracking-tight">{s.link.title}</h1>}
+          <a href={short} target="_blank" rel="noreferrer" className="block truncate font-mono text-lg font-medium text-accent">
+            {prettyUrl(short)}
+          </a>
+          <p className="truncate text-sm text-muted">
+            Goes to{" "}
+            <a href={s.link.url} target="_blank" rel="noreferrer" className="underline decoration-line underline-offset-2 hover:text-ink">
+              {prettyUrl(s.link.url)}
+            </a>
+          </p>
+          <p className="text-xs text-muted">Created {formatDate(s.link.createdAt)}</p>
+        </div>
+        <div className="flex gap-2">
+          <CopyButton text={short} />
+          <form action={deleteLink}>
+            <input type="hidden" name="id" value={s.link.id} />
+            <input type="hidden" name="redirectTo" value="dashboard" />
+            <button type="submit" className="btn-ghost text-danger">Delete</button>
+          </form>
+        </div>
+      </header>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold tracking-tight">Clicks</h2>
+        <RangeTabs basePath={basePath} current={range} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="All-time clicks" value={formatNumber(s.link.clickCount)} />
+        <StatCard label={`Last ${range} days`} value={formatNumber(s.rangeClicks)} />
+        <StatCard
+          label="Top country"
+          value={s.countries[0] ? countryName(s.countries[0].label) : "None yet"}
+          hint={s.countries[0] ? `${formatNumber(s.countries[0].count)} clicks` : undefined}
+        />
+        <StatCard
+          label="Top platform"
+          value={s.platforms[0]?.label ?? "None yet"}
+          hint={s.platforms[0] ? `${formatNumber(s.platforms[0].count)} clicks` : undefined}
+        />
+      </div>
+
+      <DailyChart data={s.series} />
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <BarList title="Countries" data={s.countries} formatLabel={countryName} />
+        <BarList title="Platforms" data={s.platforms} />
+        <BarList title="Devices" data={s.devices} />
+        <BarList title="Operating systems" data={s.os} />
+        <BarList title="Browsers" data={s.browsers} />
+        <BarList title="Referring sites" data={s.referrers} formatLabel={(l) => (l === "Unknown" ? "None (direct or app)" : l)} />
+      </div>
+    </div>
+  );
+}
