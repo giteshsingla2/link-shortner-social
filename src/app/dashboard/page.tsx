@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CreateLinkForm } from "@/components/create-link-form";
-import { BarList, DailyChart, StatCard } from "@/components/charts";
+import { BarList, ClicksChart, StatCard } from "@/components/charts";
 import { CopyButton } from "@/components/copy-button";
 import { RangeTabs } from "@/components/range-tabs";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserLinks, getUserOverview, parseRange } from "@/lib/stats";
+import { getUserLinks, getUserOverview, parseRange, rangeLabel } from "@/lib/stats";
+import { getViewerZone } from "@/lib/timezone";
 import { countryName, formatDate, formatNumber, prettyUrl } from "@/lib/format";
 import { shortUrl } from "@/lib/links";
 
@@ -36,7 +37,7 @@ export default function DashboardPage({ searchParams }: PageProps<"/dashboard">)
 async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard">["searchParams"] }) {
   const user = await getCurrentUser();
   const range = parseRange((await searchParams).range);
-  const o = await getUserOverview(user.id, range);
+  const o = await getUserOverview(user.id, range, await getViewerZone());
   const top = o.countries[0];
 
   return (
@@ -45,9 +46,10 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
         <h2 className="text-lg font-semibold tracking-tight">Overview</h2>
         <RangeTabs basePath="/dashboard" current={range} />
       </div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr">
         <StatCard label="Total clicks" value={formatNumber(o.totalClicks)} hint="All time, all links" />
-        <StatCard label={`Clicks, last ${range} days`} value={formatNumber(o.rangeClicks)} />
+        <StatCard label="Clicks today" value={formatNumber(o.todayClicks)} hint="All links, since midnight" />
+        {range !== 1 && <StatCard label={`Clicks, ${rangeLabel(range).toLowerCase()}`} value={formatNumber(o.rangeClicks)} />}
         <StatCard label="Links" value={formatNumber(o.totalLinks)} />
         <StatCard
           label="Top country"
@@ -55,7 +57,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
           hint={top ? `${formatNumber(top.count)} clicks` : undefined}
         />
       </div>
-      <DailyChart data={o.series} />
+      <ClicksChart data={o.series} unit={range === 1 ? "hour" : "day"} />
       <div className="grid gap-3 md:grid-cols-2">
         <BarList title="Top countries" data={o.countries} formatLabel={countryName} />
         <BarList title="Top platforms" data={o.platforms} />
@@ -66,7 +68,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
 
 async function LinksTable() {
   const user = await getCurrentUser();
-  const rows = await getUserLinks(user.id);
+  const rows = await getUserLinks(user.id, await getViewerZone());
 
   return (
     <section className="space-y-3">
@@ -89,11 +91,14 @@ async function LinksTable() {
                   <p className="truncate text-sm text-muted" title={l.url}>
                     {prettyUrl(l.url)}
                   </p>
+                  <p className="text-xs text-muted">Created {formatDate(l.createdAt)}</p>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3">
                   <div className="mr-auto text-left sm:mr-2 sm:text-right">
                     <p className="text-lg font-semibold tabular-nums">{formatNumber(l.clickCount)}</p>
-                    <p className="text-xs text-muted">clicks · {formatDate(l.createdAt)}</p>
+                    <p className="text-xs text-muted">
+                      clicks · <span className={l.todayClicks ? "font-medium text-accent" : undefined}>{formatNumber(l.todayClicks)} today</span>
+                    </p>
                   </div>
                   <CopyButton text={short} />
                   <Link href={`/dashboard/links/${l.id}`} className="btn-ghost">
@@ -113,8 +118,8 @@ function OverviewSkeleton() {
   return (
     <div className="space-y-4">
       <div className="h-7 w-32 animate-pulse rounded bg-line/60" />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr">
+        {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="card h-24 animate-pulse" />
         ))}
       </div>

@@ -1,4 +1,4 @@
-import type { Breakdown, DailyPoint } from "@/lib/stats";
+import type { Breakdown, ChartPoint } from "@/lib/stats";
 import { formatNumber } from "@/lib/format";
 
 export function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -52,26 +52,26 @@ export function BarList({
 }
 
 /**
- * Clicks per day as SVG bars. The SVG stretches to the card's width, and the
- * date labels sit below it as normal text so they stay readable on phones.
- * Hover a bar to see the exact count.
+ * Clicks per day (or per hour, for today) as SVG bars. The SVG stretches to the
+ * card's width, and the labels sit below it as normal text so they stay
+ * readable on phones. Hover a bar to see the exact count.
  */
-export function DailyChart({ data, title = "Clicks per day" }: { data: DailyPoint[]; title?: string }) {
+export function ClicksChart({ data, unit }: { data: ChartPoint[]; unit: "day" | "hour" }) {
+  const title = `Clicks per ${unit}`;
   const peak = Math.max(0, ...data.map((d) => d.count));
   const max = Math.max(1, peak);
   const width = 1000;
   const height = 200;
   const slot = width / data.length;
   const barW = Math.max(2, slot * 0.7);
-  const fmt = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", timeZone: "UTC" });
-  // About 4 labels on any range: first day, last day and two in between.
+  // About 4 labels on any range: first, last and two in between.
   const labelIdx = [...new Set([0, Math.round((data.length - 1) / 3), Math.round(((data.length - 1) * 2) / 3), data.length - 1])];
 
   return (
     <section className="card p-4">
       <div className="mb-3 flex items-baseline justify-between">
         <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="text-xs text-muted">Peak {formatNumber(peak)}/day</span>
+        <span className="text-xs text-muted">Peak {formatNumber(peak)}/{unit}</span>
       </div>
       <svg
         viewBox={`0 0 ${width} ${height}`}
@@ -84,9 +84,9 @@ export function DailyChart({ data, title = "Clicks per day" }: { data: DailyPoin
         {data.map((d, i) => {
           const h = (d.count / max) * (height - 4);
           return (
-            <g key={d.date}>
+            <g key={d.key}>
               <rect x={i * slot} y={0} width={slot} height={height} fill="transparent">
-                <title>{`${fmt.format(new Date(d.date))}: ${formatNumber(d.count)} clicks`}</title>
+                <title>{`${d.label}: ${formatNumber(d.count)} clicks`}</title>
               </rect>
               <rect
                 x={i * slot + (slot - barW) / 2}
@@ -102,7 +102,7 @@ export function DailyChart({ data, title = "Clicks per day" }: { data: DailyPoin
       </svg>
       <div className="mt-2 flex justify-between text-xs text-muted tabular-nums">
         {labelIdx.map((i) => (
-          <span key={i}>{fmt.format(new Date(data[i].date))}</span>
+          <span key={i}>{data[i].label}</span>
         ))}
       </div>
     </section>

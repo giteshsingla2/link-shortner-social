@@ -14,7 +14,7 @@ export function RangeTabs({ basePath, current }: { basePath: string; current: Ra
             r === current ? "bg-accent text-accent-ink" : "text-muted hover:text-ink"
           }`}
         >
-          {r} days
+          {r === 1 ? "Today" : `${r} days`}
         </Link>
       ))}
     </nav>

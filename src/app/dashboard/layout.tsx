@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Logo } from "@/components/logo";
+import { TimeZoneCookie } from "@/components/time-zone-cookie";
 import { getCurrentUser } from "@/lib/auth";
 import { logout } from "@/app/actions/auth";
 
@@ -15,6 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      <TimeZoneCookie />
     </div>
   );
 }

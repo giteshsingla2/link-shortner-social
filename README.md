@@ -103,6 +103,7 @@ A few decisions worth knowing:
 
 - **302 redirects, not 301.** Browsers cache 301s and skip the server on repeat visits, which would lose those clicks.
 - **Click logging runs after the redirect is sent** (Next.js `after()`), so visitors never wait for the database.
+- **Days follow the viewer's time zone.** The dashboard saves the browser's time zone in a `tz` cookie, so "today" and the bars on the chart start at your midnight, not UTC's. The Today tab shows clicks per hour.
 - **Repeat clicks are capped.** One person (one browser) counts at most `CLICKS_PER_VISITOR` times (default 3) per link every 24 hours. It's tracked with a cookie scoped to that short link, not by IP, so a different browser, an in-app browser or a private window counts again.
 - **Bots don't count.** Search crawlers and link-preview fetchers (WhatsApp, Telegram, Slack, Facebook...) are filtered with `isbot` plus an extra list.
 - **No IP addresses are stored.** Only country, platform, device, OS, browser and referring domain.

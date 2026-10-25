@@ -3,11 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { deleteLink } from "@/app/actions/links";
-import { BarList, DailyChart, StatCard } from "@/components/charts";
+import { BarList, ClicksChart, StatCard } from "@/components/charts";
 import { CopyButton } from "@/components/copy-button";
 import { RangeTabs } from "@/components/range-tabs";
 import { getCurrentUser } from "@/lib/auth";
-import { getLinkStats, parseRange } from "@/lib/stats";
+import { getLinkStats, parseRange, rangeLabel } from "@/lib/stats";
+import { getViewerZone } from "@/lib/timezone";
 import { countryName, formatDate, formatNumber, prettyUrl } from "@/lib/format";
 import { shortUrl } from "@/lib/links";
 
@@ -33,7 +34,7 @@ async function Stats({ params, searchParams }: PageProps<"/dashboard/links/[id]"
   const linkId = Number(id);
   if (!Number.isInteger(linkId)) notFound();
 
-  const s = await getLinkStats(user.id, linkId, range);
+  const s = await getLinkStats(user.id, linkId, range, await getViewerZone());
   if (!s) notFound();
 
   const short = shortUrl(s.link.slug);
@@ -70,9 +71,10 @@ async function Stats({ params, searchParams }: PageProps<"/dashboard/links/[id]"
         <RangeTabs basePath={basePath} current={range} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr">
         <StatCard label="All-time clicks" value={formatNumber(s.link.clickCount)} />
-        <StatCard label={`Last ${range} days`} value={formatNumber(s.rangeClicks)} />
+        <StatCard label="Today" value={formatNumber(s.todayClicks)} hint="Since midnight" />
+        {range !== 1 && <StatCard label={rangeLabel(range)} value={formatNumber(s.rangeClicks)} />}
         <StatCard
           label="Top country"
           value={s.countries[0] ? countryName(s.countries[0].label) : "None yet"}
@@ -85,7 +87,7 @@ async function Stats({ params, searchParams }: PageProps<"/dashboard/links/[id]"
         />
       </div>
 
-      <DailyChart data={s.series} />
+      <ClicksChart data={s.series} unit={range === 1 ? "hour" : "day"} />
 
       <div className="grid gap-3 md:grid-cols-2">
         <BarList title="Countries" data={s.countries} formatLabel={countryName} />

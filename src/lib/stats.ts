@@ -1,13 +1,16 @@
 import "server-only";
-import { and, count, desc, eq, gte, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, sql, type SQL } from "drizzle-orm";
 import type { MySqlColumn } from "drizzle-orm/mysql-core";
 import { db } from "@/db";
 import { clicks, links } from "@/db/schema";
+import { startOfDay, type Zone } from "./timezone";
 
 export type Breakdown = { label: string; count: number }[];
-export type DailyPoint = { date: string; count: number };
+/** One bar on the clicks chart: a day, or an hour when the range is today. */
+export type ChartPoint = { key: string; label: string; count: number };
 
-export const RANGES = [7, 30, 90] as const;
+/** 1 means today. Every range is whole days in the viewer's time zone, ending today. */
+export const RANGES = [1, 7, 30, 90] as const;
 export type RangeDays = (typeof RANGES)[number];
 
 export function parseRange(value: string | string[] | undefined): RangeDays {
@@ -15,8 +18,8 @@ export function parseRange(value: string | string[] | undefined): RangeDays {
   return (RANGES as readonly number[]).includes(n) ? (n as RangeDays) : 30;
 }
 
-function since(days: number): SQL {
-  return sql`UTC_TIMESTAMP() - INTERVAL ${days} DAY`;
+export function rangeLabel(days: RangeDays) {
+  return days === 1 ? "Today" : `Last ${days} days`;
 }
 
 async function breakdown(column: MySqlColumn, where: SQL | undefined, limit = 8): Promise<Breakdown> {
@@ -31,30 +34,44 @@ async function breakdown(column: MySqlColumn, where: SQL | undefined, limit = 8)
   return rows.map((r) => ({ label: (r.label as string | null) ?? "Unknown", count: r.count }));
 }
 
-async function daily(where: SQL | undefined, days: number): Promise<DailyPoint[]> {
+/** Clicks per day in the viewer's zone, or per hour of today when the range is one day. */
+async function chartSeries(where: SQL | undefined, days: number, zone: Zone): Promise<ChartPoint[]> {
+  const localTime = sql`CONVERT_TZ(${clicks.clickedAt}, '+00:00', ${zone.sqlOffset})`;
+  const bucket = days === 1 ? sql<string>`LPAD(HOUR(${localTime}), 2, '0')` : sql<string>`DATE_FORMAT(${localTime}, '%Y-%m-%d')`;
+
   const rows = await db
-    .select({ day: sql<string>`DATE_FORMAT(${clicks.clickedAt}, '%Y-%m-%d')`.as("day"), count: count() })
+    .select({ key: bucket.as("bucket"), count: count() })
     .from(clicks)
     .innerJoin(links, eq(clicks.linkId, links.id))
     .where(where)
-    .groupBy(sql`day`)
-    .orderBy(sql`day`);
+    .groupBy(sql`bucket`);
+  const byKey = new Map(rows.map((r) => [r.key, r.count]));
 
-  // Fill in days with zero clicks so the chart has no gaps.
-  const byDay = new Map(rows.map((r) => [r.day, r.count]));
-  const out: DailyPoint[] = [];
-  const today = new Date();
+  // Fill in empty hours or days so the chart has no gaps.
+  if (days === 1) {
+    return Array.from({ length: 24 }, (_, h) => {
+      const key = String(h).padStart(2, "0");
+      return { key, label: `${key}:00`, count: byKey.get(key) ?? 0 };
+    });
+  }
+  const fmt = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", timeZone: "UTC" });
+  const out: ChartPoint[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
-    const key = d.toISOString().slice(0, 10);
-    out.push({ date: key, count: byDay.get(key) ?? 0 });
+    // Shift the UTC instant of local midnight by the offset to read the local calendar date.
+    const local = new Date(startOfDay(zone, i).getTime() + zone.offsetMinutes * 60_000);
+    const key = local.toISOString().slice(0, 10);
+    out.push({ key, label: fmt.format(local), count: byKey.get(key) ?? 0 });
   }
   return out;
 }
 
-/** All of a user's links, newest first. */
-export async function getUserLinks(userId: number) {
-  return db
+function sumOf(series: ChartPoint[]) {
+  return series.reduce((total, p) => total + p.count, 0);
+}
+
+/** All of a user's links, newest first, with how many clicks each got today. */
+export async function getUserLinks(userId: number, zone: Zone) {
+  const rows = await db
     .select({
       id: links.id,
       slug: links.slug,
@@ -67,31 +84,43 @@ export async function getUserLinks(userId: number) {
     .where(eq(links.userId, userId))
     .orderBy(desc(links.createdAt))
     .limit(500);
+  if (rows.length === 0) return [];
+
+  const today = await db
+    .select({ linkId: clicks.linkId, count: count() })
+    .from(clicks)
+    .where(and(inArray(clicks.linkId, rows.map((r) => r.id)), gte(clicks.clickedAt, startOfDay(zone))))
+    .groupBy(clicks.linkId);
+  const todayById = new Map(today.map((t) => [t.linkId, t.count]));
+
+  return rows.map((r) => ({ ...r, todayClicks: todayById.get(r.id) ?? 0 }));
 }
 
 /** Totals and top countries/platforms across every link the user owns. */
-export async function getUserOverview(userId: number, days: RangeDays) {
-  const inRange = and(eq(links.userId, userId), gte(clicks.clickedAt, since(days)));
+export async function getUserOverview(userId: number, days: RangeDays, zone: Zone) {
+  const mine = eq(links.userId, userId);
+  const inRange = and(mine, gte(clicks.clickedAt, startOfDay(zone, days - 1)));
 
-  const [[totals], [rangeTotal], countries, platforms, series] = await Promise.all([
+  const [[totals], [today], countries, platforms, series] = await Promise.all([
     db
       .select({ links: count(), clicks: sql<number>`COALESCE(SUM(${links.clickCount}), 0)`.mapWith(Number) })
       .from(links)
-      .where(eq(links.userId, userId)),
+      .where(mine),
     db
       .select({ clicks: count() })
       .from(clicks)
       .innerJoin(links, eq(clicks.linkId, links.id))
-      .where(inRange),
+      .where(and(mine, gte(clicks.clickedAt, startOfDay(zone)))),
     breakdown(clicks.country, inRange, 6),
     breakdown(clicks.platform, inRange, 6),
-    daily(inRange, days),
+    chartSeries(inRange, days, zone),
   ]);
 
   return {
     totalLinks: totals.links,
     totalClicks: totals.clicks,
-    rangeClicks: rangeTotal.clicks,
+    todayClicks: today.clicks,
+    rangeClicks: sumOf(series),
     countries,
     platforms,
     series,
@@ -99,7 +128,7 @@ export async function getUserOverview(userId: number, days: RangeDays) {
 }
 
 /** Full stats for one link. Returns null when the link doesn't belong to this user. */
-export async function getLinkStats(userId: number, linkId: number, days: RangeDays) {
+export async function getLinkStats(userId: number, linkId: number, days: RangeDays, zone: Zone) {
   const [link] = await db
     .select()
     .from(links)
@@ -107,11 +136,14 @@ export async function getLinkStats(userId: number, linkId: number, days: RangeDa
     .limit(1);
   if (!link) return null;
 
-  const inRange = and(eq(clicks.linkId, linkId), gte(clicks.clickedAt, since(days)));
+  const inRange = and(eq(clicks.linkId, linkId), gte(clicks.clickedAt, startOfDay(zone, days - 1)));
 
-  const [[rangeTotal], series, countries, platforms, devices, os, browsers, referrers] = await Promise.all([
-    db.select({ clicks: count() }).from(clicks).where(inRange),
-    daily(inRange, days),
+  const [[today], series, countries, platforms, devices, os, browsers, referrers] = await Promise.all([
+    db
+      .select({ clicks: count() })
+      .from(clicks)
+      .where(and(eq(clicks.linkId, linkId), gte(clicks.clickedAt, startOfDay(zone)))),
+    chartSeries(inRange, days, zone),
     breakdown(clicks.country, inRange, 10),
     breakdown(clicks.platform, inRange, 10),
     breakdown(clicks.device, inRange, 6),
@@ -120,5 +152,5 @@ export async function getLinkStats(userId: number, linkId: number, days: RangeDa
     breakdown(clicks.referrerHost, inRange, 8),
   ]);
 
-  return { link, rangeClicks: rangeTotal.clicks, series, countries, platforms, devices, os, browsers, referrers };
+  return { link, todayClicks: today.clicks, rangeClicks: sumOf(series), series, countries, platforms, devices, os, browsers, referrers };
 }
