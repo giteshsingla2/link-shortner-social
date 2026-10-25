@@ -1,4 +1,4 @@
-import type { Breakdown, ChartPoint } from "@/lib/stats";
+import type { Breakdown } from "@/lib/stats";
 import { formatNumber } from "@/lib/format";
 
 export function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -47,64 +47,6 @@ export function BarList({
           ))}
         </ul>
       )}
-    </section>
-  );
-}
-
-/**
- * Clicks per day (or per hour, for today) as SVG bars. The SVG stretches to the
- * card's width, and the labels sit below it as normal text so they stay
- * readable on phones. Hover a bar to see the exact count.
- */
-export function ClicksChart({ data, unit }: { data: ChartPoint[]; unit: "day" | "hour" }) {
-  const title = `Clicks per ${unit}`;
-  const peak = Math.max(0, ...data.map((d) => d.count));
-  const max = Math.max(1, peak);
-  const width = 1000;
-  const height = 200;
-  const slot = width / data.length;
-  const barW = Math.max(2, slot * 0.7);
-  // About 4 labels on any range: first, last and two in between.
-  const labelIdx = [...new Set([0, Math.round((data.length - 1) / 3), Math.round(((data.length - 1) * 2) / 3), data.length - 1])];
-
-  return (
-    <section className="card p-4">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="text-xs text-muted">Peak {formatNumber(peak)}/{unit}</span>
-      </div>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        className="h-36 w-full sm:h-48"
-        role="img"
-        aria-label={title}
-      >
-        <line x1="0" x2={width} y1={height - 0.5} y2={height - 0.5} stroke="var(--line)" vectorEffect="non-scaling-stroke" />
-        {data.map((d, i) => {
-          const h = (d.count / max) * (height - 4);
-          return (
-            <g key={d.key}>
-              <rect x={i * slot} y={0} width={slot} height={height} fill="transparent">
-                <title>{`${d.label}: ${formatNumber(d.count)} clicks`}</title>
-              </rect>
-              <rect
-                x={i * slot + (slot - barW) / 2}
-                y={height - Math.max(h, d.count ? 3 : 0)}
-                width={barW}
-                height={Math.max(h, d.count ? 3 : 0)}
-                fill="var(--accent)"
-                pointerEvents="none"
-              />
-            </g>
-          );
-        })}
-      </svg>
-      <div className="mt-2 flex justify-between text-xs text-muted tabular-nums">
-        {labelIdx.map((i) => (
-          <span key={i}>{data[i].label}</span>
-        ))}
-      </div>
     </section>
   );
 }
