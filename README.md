@@ -96,7 +96,6 @@ Run `npm run build` locally with the production `.env`, then upload the project 
 | Login / signup / logout | `src/app/actions/auth.ts`, `src/lib/session.ts` |
 | Create / delete links, spam limits | `src/app/actions/links.ts`, `src/lib/links.ts` |
 | Stats queries | `src/lib/stats.ts` |
-| Folding old clicks into daily counts | `src/lib/rollup.ts`, started from `src/instrumentation.ts` |
 | Database tables | `src/db/schema.ts` (same as `database/schema.sql`) |
 | Dashboard pages | `src/app/dashboard/` |
 
@@ -104,7 +103,6 @@ A few decisions worth knowing:
 
 - **302 redirects, not 301.** Browsers cache 301s and skip the server on repeat visits, which would lose those clicks.
 - **Click logging runs after the redirect is sent** (Next.js `after()`), so visitors never wait for the database.
-- **Single clicks are kept for 7 days.** Every hour the app folds older days into the `click_daily` table: one row per link, day and combination of country, platform, device, OS, browser and referring site, with how many clicks had exactly that combination. Then it deletes those single rows. Nothing but the time of day is lost ("India + Instagram + Mobile" can still be counted), the 90-day charts read both tables, and busy links shrink from thousands of rows a day to a few hundred.
 - **Repeat clicks are capped.** One person (one browser) counts at most `CLICKS_PER_VISITOR` times (default 3) per link every 24 hours. It's tracked with a cookie scoped to that short link, not by IP, so a different browser, an in-app browser or a private window counts again.
 - **Bots don't count.** Search crawlers and link-preview fetchers (WhatsApp, Telegram, Slack, Facebook...) are filtered with `isbot` plus an extra list.
 - **No IP addresses are stored.** Only country, platform, device, OS, browser and referring domain.
@@ -125,8 +123,6 @@ Edit `src/db/schema.ts`, then:
 npm run db:generate   # writes a new SQL file into drizzle/
 npm run db:migrate    # applies it to the database in DATABASE_URL
 ```
-
-Every table in `database/schema.sql` uses `CREATE TABLE IF NOT EXISTS`, so importing it again into an existing database only adds tables that are missing. That's the simplest way to pick up a new table after `git pull`.
 
 If you set the database up from `database/schema.sql`, the first migration (`drizzle/0000_init.sql`) is already applied. Use `db:migrate` only for new migrations, or apply new SQL files by hand in phpMyAdmin.
 

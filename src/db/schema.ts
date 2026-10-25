@@ -1,12 +1,10 @@
 import {
   bigint,
   char,
-  date,
   datetime,
   index,
   int,
   mysqlTable,
-  primaryKey,
   timestamp,
   uniqueIndex,
   varchar,
@@ -61,37 +59,6 @@ export const clicks = mysqlTable(
     referrerHost: varchar("referrer_host", { length: 255 }),
   },
   (t) => [index("clicks_link_time_idx").on(t.linkId, t.clickedAt)],
-);
-
-/**
- * Clicks older than RAW_CLICK_DAYS are folded into this table by
- * src/lib/rollup.ts, so the clicks table stops growing forever. One row per
- * link, day and combination of the click columns, with how many clicks had
- * exactly that combination, e.g. (42, "2026-09-01", "IN", "Instagram",
- * "Mobile", "Android", "Instagram", "", 52). Only the time of day is lost.
- * A missing country or referrer is stored as "" so it can be part of the key.
- */
-export const clickDaily = mysqlTable(
-  "click_daily",
-  {
-    linkId: bigint("link_id", { mode: "number", unsigned: true })
-      .notNull()
-      .references(() => links.id, { onDelete: "cascade" }),
-    day: date("day", { mode: "string" }).notNull(),
-    country: char("country", { length: 2 }).notNull().default(""),
-    platform: varchar("platform", { length: 32 }).notNull(),
-    device: varchar("device", { length: 16 }).notNull(),
-    os: varchar("os", { length: 32 }).notNull(),
-    browser: varchar("browser", { length: 32 }).notNull(),
-    referrerHost: varchar("referrer_host", { length: 255 }).notNull().default(""),
-    clicks: int("clicks", { unsigned: true }).notNull(),
-  },
-  (t) => [
-    primaryKey({
-      name: "click_daily_pk",
-      columns: [t.linkId, t.day, t.country, t.platform, t.device, t.os, t.browser, t.referrerHost],
-    }),
-  ],
 );
 
 export type User = typeof users.$inferSelect;

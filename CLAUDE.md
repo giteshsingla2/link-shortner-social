@@ -27,5 +27,4 @@ Link shortener with per-click analytics. Next.js 16 App Router + MySQL (Drizzle 
 - Don't store visitor IP addresses.
 - Paths used by the app must be in `RESERVED_SLUGS` (`src/lib/links.ts`), because `src/app/[slug]/route.ts` catches every single-segment path not claimed by a page.
 - `ua-parser-js` is pinned to v1 on purpose: v2 is AGPL, which would require publishing the source of the hosted app.
-- Clicks older than `RAW_CLICK_DAYS` (7) are folded into `click_daily` (same columns plus a `clicks` count, one row per combination per day) by `src/lib/rollup.ts`. Any stat that can reach further back must add both tables, as `src/lib/stats.ts` does.
 - Times are stored in UTC (`timezone: "Z"` on the pool; queries use `UTC_TIMESTAMP()`).
