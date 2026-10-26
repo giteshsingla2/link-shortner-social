@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateLink, type UpdateLinkState } from "@/app/actions/links";
+import { PencilIcon } from "./icons";
 import { SubmitButton } from "./submit-button";
 
 type EditableLink = { id: number; url: string; title: string | null };
@@ -23,11 +24,12 @@ export function LinkHeader({
   const [editing, setEditing] = useState(false);
 
   return (
-    <header className="card p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="min-w-0 flex-1 space-y-1">{children}</div>
-        <div className="flex gap-2">
+    <section className="card p-5 sm:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-4">{children}</div>
+        <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-ghost" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
+            <PencilIcon size={15} />
             Edit
           </button>
           {actions}
@@ -35,7 +37,7 @@ export function LinkHeader({
       </div>
       {/* Mounted only while open, so a past error doesn't show when it's reopened. */}
       {editing && <EditLinkForm link={link} onDone={() => setEditing(false)} />}
-    </header>
+    </section>
   );
 }
 
@@ -53,7 +55,7 @@ function EditLinkForm({ link, onDone }: { link: EditableLink; onDone: () => void
     <form action={formAction} className="mt-5 space-y-3 border-t border-line pt-5">
       <input type="hidden" name="id" value={link.id} />
       <label className="block space-y-1.5">
-        <span className="text-sm font-medium">Destination</span>
+        <span className="text-[13px] font-medium">Destination</span>
         <input
           name="url"
           className="input"
@@ -65,7 +67,7 @@ function EditLinkForm({ link, onDone }: { link: EditableLink; onDone: () => void
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm font-medium">Title (only you see this)</span>
+        <span className="text-[13px] font-medium">Title (only you see this)</span>
         <input name="title" className="input" defaultValue={fields?.title ?? link.title ?? ""} maxLength={255} />
       </label>
       <p className="text-xs text-muted">
@@ -73,7 +75,7 @@ function EditLinkForm({ link, onDone }: { link: EditableLink; onDone: () => void
       </p>
 
       {state && !state.ok && (
-        <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p role="alert" className="rounded-xl bg-danger/10 px-3.5 py-2.5 text-sm text-danger">
           {state.error}
         </p>
       )}

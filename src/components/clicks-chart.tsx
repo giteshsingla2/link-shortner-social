@@ -32,10 +32,10 @@ export function ClicksChart({ data, unit }: { data: ChartPoint[]; unit: "day" | 
   const pct = (count: number) => (count / top) * 100;
 
   return (
-    <section className="card p-4">
+    <section className="card p-4 sm:p-5">
       <div className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-sm font-semibold">Clicks per {unit}</h3>
-        <span className="text-xs text-muted">Peak {formatNumber(peak)}/{unit}</span>
+        <h3 className="text-[13px] font-semibold">Clicks per {unit}</h3>
+        <span className="text-xs text-muted tabular-nums">Peak {formatNumber(peak)}/{unit}</span>
       </div>
 
       {/* Top margin leaves room for the count above the tallest bar. */}
@@ -51,7 +51,7 @@ export function ClicksChart({ data, unit }: { data: ChartPoint[]; unit: "day" | 
 
         <div className="relative h-36 min-w-0 flex-1 sm:h-48" onMouseLeave={() => setActive(null)}>
           {[0, 50, 100].map((y) => (
-            <div key={y} className="absolute inset-x-0 border-t border-line" style={{ top: `${y}%` }} aria-hidden />
+            <div key={y} className={`absolute inset-x-0 border-t border-line ${y === 100 ? "" : "border-dashed"}`} style={{ top: `${y}%` }} aria-hidden />
           ))}
 
           <div className="absolute inset-0 flex" role="list" aria-label={`Clicks per ${unit}`}>
@@ -67,12 +67,16 @@ export function ClicksChart({ data, unit }: { data: ChartPoint[]; unit: "day" | 
                   onMouseEnter={() => setActive(i)}
                   onClick={() => setActive(isActive ? null : i)}
                 >
-                  {isActive && <div className="absolute inset-0 rounded-sm bg-accent-soft/60" aria-hidden />}
+                  {isActive && <div className="absolute inset-0 rounded-md bg-hover" aria-hidden />}
                   <div
-                    className={`absolute bottom-0 left-[15%] right-[15%] rounded-t-sm bg-accent transition-opacity ${
-                      active !== null && !isActive ? "opacity-50" : ""
+                    className={`absolute bottom-0 left-[18%] right-[18%] rounded-t-[5px] rounded-b-[2px] transition-opacity ${
+                      active !== null && !isActive ? "opacity-45" : ""
                     }`}
-                    style={{ height: d.count ? `max(${h}%, 3px)` : 0 }}
+                    style={{
+                      height: d.count ? `max(${h}%, 3px)` : 0,
+                      background: "linear-gradient(180deg, var(--accent-2), var(--accent))",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,.4)",
+                    }}
                     aria-hidden
                   />
                   {labels && d.count > 0 && (
@@ -91,7 +95,7 @@ export function ClicksChart({ data, unit }: { data: ChartPoint[]; unit: "day" | 
 
           {shown && active !== null && (
             <div
-              className={`pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs shadow-lg ${
+              className={`pointer-events-none absolute z-10 whitespace-nowrap rounded-xl border border-line bg-surface px-3 py-2 text-xs shadow-[0_10px_30px_-10px_var(--shadow)] backdrop-blur-xl ${
                 active < data.length / 6 ? "" : active > (data.length * 5) / 6 ? "-translate-x-full" : "-translate-x-1/2"
               }`}
               style={{

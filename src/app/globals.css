@@ -1,28 +1,77 @@
+/* Layer order: our component classes sit below Tailwind's utilities, so a utility
+   on an element (px-0, py-2...) overrides them. Must come before the import. */
+@layer theme, base, shortly, components, utilities;
 @import "tailwindcss";
 
+/*
+ * "Golden Gate glass": frosted Liquid Glass panels over a warm golden-hour
+ * wallpaper (gold, International Orange, rose, bay blue), after macOS 27.
+ * Every surface is a token so light and dark follow the system setting.
+ */
 :root {
-  --bg: #f6f5f1;
-  --surface: #ffffff;
-  --ink: #15171c;
-  --muted: #646a73;
-  --line: #e3e1da;
-  --accent: #1d6b48;
+  color-scheme: light;
+  --bg: #f3e8db;
+  --ink: #1d1d1f;
+  --muted: #6b6158;
+  --line: rgba(84, 52, 22, 0.13);
+  /* Popovers and tooltips: nearly solid so text on them stays crisp. */
+  --surface: rgba(255, 252, 248, 0.92);
+  --glass: rgba(255, 255, 255, 0.56);
+  --glass-strong: rgba(255, 255, 255, 0.72);
+  --glass-edge: rgba(255, 255, 255, 0.72);
+  --glass-shine: rgba(255, 255, 255, 0.95);
+  --shadow: rgba(122, 62, 12, 0.2);
+  --field: rgba(255, 255, 255, 0.66);
+  --hover: rgba(255, 255, 255, 0.5);
+  /* Fills (buttons, bars) use the bright pair; text uses the deeper --link for contrast. */
+  --accent: #f0562b;
+  --accent-2: #ffa733;
+  --link: #c2410c;
+  /* Start of the headline gradient: a deeper gold in light mode so it reads on the gold wallpaper. */
+  --headline-gold: #d9730d;
   --accent-ink: #ffffff;
-  --accent-soft: #e2f0e8;
-  --danger: #b42318;
+  --accent-soft: rgba(240, 86, 43, 0.13);
+  --danger: #c8261b;
+  --good: #1f9d55;
+
+  --wall-base: #f6eadc;
+  --wall-gold: rgba(255, 190, 80, 0.85);
+  --wall-orange: rgba(250, 104, 52, 0.55);
+  --wall-rose: rgba(255, 138, 160, 0.45);
+  --wall-bay: rgba(92, 132, 214, 0.42);
+  --wall-haze: rgba(255, 244, 228, 0.9);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f1113;
-    --surface: #171a1d;
-    --ink: #eceae4;
-    --muted: #9aa0a8;
-    --line: #2a2e33;
-    --accent: #4cc08a;
-    --accent-ink: #08130d;
-    --accent-soft: #1a2e24;
-    --danger: #f97066;
+    color-scheme: dark;
+    --bg: #0d0f19;
+    --ink: #f5f5f7;
+    --muted: #a8a19b;
+    --line: rgba(255, 255, 255, 0.1);
+    --surface: rgba(34, 32, 38, 0.94);
+    --glass: rgba(28, 27, 34, 0.55);
+    --glass-strong: rgba(36, 34, 42, 0.72);
+    --glass-edge: rgba(255, 255, 255, 0.12);
+    --glass-shine: rgba(255, 255, 255, 0.16);
+    --shadow: rgba(0, 0, 0, 0.5);
+    --field: rgba(0, 0, 0, 0.28);
+    --hover: rgba(255, 255, 255, 0.07);
+    --accent: #ff6a3d;
+    --accent-2: #ffb340;
+    --link: #ffa078;
+    --headline-gold: #ffb340;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(255, 106, 61, 0.18);
+    --danger: #ff6b5e;
+    --good: #4ade80;
+
+    --wall-base: #0b0d18;
+    --wall-gold: rgba(255, 170, 60, 0.32);
+    --wall-orange: rgba(240, 86, 43, 0.42);
+    --wall-rose: rgba(150, 60, 120, 0.35);
+    --wall-bay: rgba(38, 72, 170, 0.55);
+    --wall-haze: rgba(20, 22, 40, 0.6);
   }
 }
 
@@ -33,30 +82,173 @@
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-link: var(--link);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --color-good: var(--good);
+  --color-glass: var(--glass);
+  --color-hover: var(--hover);
+  /* San Francisco on Apple devices, Inter everywhere else. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-inter), system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-inter), system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+html {
+  background: var(--wall-base);
 }
 
 body {
-  background: var(--bg);
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.006em;
 }
 
-.input {
-  @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-[15px] outline-none transition placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20;
+/* The wallpaper: soft swirls of light, fixed behind everything. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  z-index: -2;
+  background:
+    radial-gradient(38% 42% at 12% 8%, var(--wall-gold), transparent 70%),
+    radial-gradient(34% 40% at 88% 6%, var(--wall-orange), transparent 72%),
+    radial-gradient(40% 46% at 62% 46%, var(--wall-haze), transparent 70%),
+    radial-gradient(42% 44% at 6% 78%, var(--wall-rose), transparent 72%),
+    radial-gradient(50% 50% at 92% 92%, var(--wall-bay), transparent 72%),
+    conic-gradient(from 210deg at 50% 60%, var(--wall-gold), var(--wall-orange), var(--wall-rose), var(--wall-bay), var(--wall-gold));
+  filter: blur(40px) saturate(115%);
 }
 
-.btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-[15px] font-medium text-accent-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60;
+/* A whisper of film grain so the gradients don't band. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.btn-ghost {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-ink transition hover:bg-bg;
+::selection {
+  background: var(--accent-soft);
 }
 
-.card {
-  @apply rounded-xl border border-line bg-surface;
+/* Component classes, layered below utilities (see the top of the file). */
+@layer shortly {
+  /* ---------- Liquid Glass surfaces ---------- */
+
+  .glass,
+  .card {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+      inset 0 1px 0 var(--glass-shine),
+      0 1px 2px rgba(0, 0, 0, 0.04),
+      0 18px 40px -22px var(--shadow);
+  }
+
+  .card {
+    border-radius: 22px;
+  }
+
+  .glass-strong {
+    background: var(--glass-strong);
+  }
+
+  /* Toolbars and sidebars: glass without the floating shadow. */
+  .bar {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+  }
+
+  /* ---------- Controls ---------- */
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[15px] font-semibold transition select-none disabled:cursor-not-allowed disabled:opacity-60;
+    color: var(--accent-ink);
+    background: linear-gradient(180deg, var(--accent-2) -40%, var(--accent) 70%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+      0 8px 20px -10px var(--accent);
+  }
+  .btn:hover:not(:disabled) {
+    filter: brightness(1.06) saturate(1.05);
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition select-none;
+    color: var(--ink);
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+      inset 0 1px 0 var(--glass-shine),
+      0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  .btn-ghost:hover {
+    background: var(--surface);
+  }
+  .btn-ghost:active {
+    transform: scale(0.98);
+  }
+
+  .input {
+    @apply w-full rounded-xl px-3.5 py-2.5 text-[15px] transition outline-none placeholder:text-muted/70;
+    color: var(--ink);
+    background: var(--field);
+    border: 1px solid var(--line);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  /* macOS-style focus ring: a soft halo in the accent colour. */
+  .input:focus,
+  .input:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3.5px var(--accent-soft);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* A field inside an .input wrapper shows the wrapper's ring instead. */
+  .input input:focus-visible {
+    outline: none;
+  }
+
+  /* Small uppercase label above a group, like macOS sidebar headings. */
+  .eyebrow {
+    @apply text-[11px] font-semibold tracking-[0.06em] uppercase;
+    color: var(--muted);
+  }
+}
+
+/* ---------- Accessibility ---------- */
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .card,
+  .bar {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }
