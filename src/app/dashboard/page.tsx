@@ -49,8 +49,8 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr">
         <StatCard label="Total clicks" value={formatNumber(o.totalClicks)} hint="All time, all links" />
-        <StatCard label="Clicks today" value={formatNumber(o.todayClicks)} hint="All links, since midnight" />
-        {range !== 1 && <StatCard label={`Clicks, ${rangeLabel(range).toLowerCase()}`} value={formatNumber(o.rangeClicks)} />}
+        <StatCard label="Clicks today" value={formatNumber(o.todayClicks)} hint={`${formatNumber(o.todayVisitors)} unique ${o.todayVisitors === 1 ? "visitor" : "visitors"}`} />
+        {range !== 1 && <StatCard label={`Clicks, ${rangeLabel(range).toLowerCase()}`} value={formatNumber(o.rangeClicks)} hint={`${formatNumber(o.rangeVisitors)} unique ${o.rangeVisitors === 1 ? "visitor" : "visitors"}`} />}
         <StatCard label="Links" value={formatNumber(o.totalLinks)} />
         <StatCard
           label="Top country"

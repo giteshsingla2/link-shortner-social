@@ -10,7 +10,7 @@ Link shortener with per-click analytics. Next.js 16 App Router + MySQL (Drizzle 
 - `npm run typecheck` - route types + `tsc`
 - `npm run lint`
 - `npm run build`
-- `npm run db:generate` / `npm run db:migrate` - after editing `src/db/schema.ts`. Keep `database/schema.sql` (the phpMyAdmin import file) in sync by hand.
+- `npm run db:generate` / `npm run db:migrate` - after editing `src/db/schema.ts`. Keep `database/schema.sql` (the phpMyAdmin import file) in sync by hand, and when the change alters an existing table, add a numbered plain-SQL file to `database/upgrades/` (the live server was set up from schema.sql, so that's how it gets upgraded). Drizzle's migration files can't be fed to the `mysql` CLI as-is.
 
 ## Next.js 16 specifics this codebase relies on
 

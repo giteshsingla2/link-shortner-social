@@ -5,6 +5,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { links } from "@/db/schema";
+import { forgetLink } from "@/lib/link-cache";
 import { getSessionUserId } from "@/lib/session";
 import { generateSlug, isUnsafeUrl, normalizeUrl, RESERVED_SLUGS, SLUG_PATTERN, shortUrl } from "@/lib/links";
 
@@ -79,6 +80,48 @@ export async function createLink(_prev: CreateLinkState, formData: FormData): Pr
   return { ok: false, error: "Couldn't create a unique link. Please try again.", fields };
 }
 
+export type UpdateLinkState =
+  | { ok: true }
+  | { ok: false; error: string; fields?: { url: string; title: string } }
+  | undefined;
+
+/** Changes where a link goes (and its title). The short link, clicks and stats stay. */
+export async function updateLink(_prev: UpdateLinkState, formData: FormData): Promise<UpdateLinkState> {
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
+
+  const id = Number(formData.get("id"));
+  const rawUrl = String(formData.get("url") ?? "");
+  const rawTitle = String(formData.get("title") ?? "");
+  const fields = { url: rawUrl, title: rawTitle };
+  if (!Number.isInteger(id)) return { ok: false, error: "Link not found.", fields };
+
+  const url = normalizeUrl(rawUrl);
+  if (!url) return { ok: false, error: "That doesn't look like a valid web address.", fields };
+  if (APP_HOST && new URL(url).hostname === APP_HOST) {
+    return { ok: false, error: "That's already one of our short links.", fields };
+  }
+  const title = rawTitle.trim().slice(0, 255) || null;
+
+  // The userId condition stops anyone editing a link that isn't theirs.
+  const [link] = await db
+    .select({ slug: links.slug })
+    .from(links)
+    .where(and(eq(links.id, id), eq(links.userId, userId)))
+    .limit(1);
+  if (!link) return { ok: false, error: "Link not found.", fields };
+
+  // Checked on edit too, or a link could be made with a safe URL and switched later.
+  if (await isUnsafeUrl(url)) {
+    return { ok: false, error: "Google Safe Browsing flags this site as unsafe, so a link can't point to it.", fields };
+  }
+
+  await db.update(links).set({ url, title }).where(and(eq(links.id, id), eq(links.userId, userId)));
+  forgetLink(link.slug);
+  refresh();
+  return { ok: true };
+}
+
 export async function deleteLink(formData: FormData) {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
@@ -87,7 +130,15 @@ export async function deleteLink(formData: FormData) {
   if (!Number.isInteger(id)) return;
 
   // The userId condition stops anyone deleting a link that isn't theirs.
-  await db.delete(links).where(and(eq(links.id, id), eq(links.userId, userId)));
+  const [link] = await db
+    .select({ slug: links.slug })
+    .from(links)
+    .where(and(eq(links.id, id), eq(links.userId, userId)))
+    .limit(1);
+  if (link) {
+    await db.delete(links).where(and(eq(links.id, id), eq(links.userId, userId)));
+    forgetLink(link.slug);
+  }
   refresh();
   if (formData.get("redirectTo") === "dashboard") redirect("/dashboard");
 }

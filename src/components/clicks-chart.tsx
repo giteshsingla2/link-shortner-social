@@ -62,7 +62,7 @@ export function ClicksChart({ data, unit }: { data: ChartPoint[]; unit: "day" | 
                 <div
                   key={d.key}
                   role="listitem"
-                  aria-label={`${d.label}: ${formatNumber(d.count)} clicks`}
+                  aria-label={`${d.label}: ${formatNumber(d.count)} clicks, ${formatNumber(d.visitors)} visitors`}
                   className="relative h-full flex-1 cursor-default"
                   onMouseEnter={() => setActive(i)}
                   onClick={() => setActive(isActive ? null : i)}
@@ -102,6 +102,9 @@ export function ClicksChart({ data, unit }: { data: ChartPoint[]; unit: "day" | 
               <span className="text-muted">{shown.label}</span>
               <span className="ml-2 font-semibold tabular-nums">
                 {formatNumber(shown.count)} {shown.count === 1 ? "click" : "clicks"}
+              </span>
+              <span className="ml-1.5 text-muted tabular-nums">
+                · {formatNumber(shown.visitors)} {shown.visitors === 1 ? "visitor" : "visitors"}
               </span>
             </div>
           )}

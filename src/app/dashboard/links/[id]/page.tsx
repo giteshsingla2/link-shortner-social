@@ -6,6 +6,7 @@ import { deleteLink } from "@/app/actions/links";
 import { BarList, StatCard } from "@/components/charts";
 import { ClicksChart } from "@/components/clicks-chart";
 import { CopyButton } from "@/components/copy-button";
+import { LinkHeader } from "@/components/link-header";
 import { RangeTabs } from "@/components/range-tabs";
 import { getCurrentUser } from "@/lib/auth";
 import { getLinkStats, parseRange, rangeLabel } from "@/lib/stats";
@@ -43,29 +44,31 @@ async function Stats({ params, searchParams }: PageProps<"/dashboard/links/[id]"
 
   return (
     <div className="space-y-6">
-      <header className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
-        <div className="min-w-0 flex-1 space-y-1">
-          {s.link.title && <h1 className="truncate text-xl font-semibold tracking-tight">{s.link.title}</h1>}
-          <a href={short} target="_blank" rel="noreferrer" className="block truncate font-mono text-lg font-medium text-accent">
-            {prettyUrl(short)}
+      <LinkHeader
+        link={{ id: s.link.id, url: s.link.url, title: s.link.title }}
+        actions={
+          <>
+            <CopyButton text={short} />
+            <form action={deleteLink}>
+              <input type="hidden" name="id" value={s.link.id} />
+              <input type="hidden" name="redirectTo" value="dashboard" />
+              <button type="submit" className="btn-ghost text-danger">Delete</button>
+            </form>
+          </>
+        }
+      >
+        {s.link.title && <h1 className="truncate text-xl font-semibold tracking-tight">{s.link.title}</h1>}
+        <a href={short} target="_blank" rel="noreferrer" className="block truncate font-mono text-lg font-medium text-accent">
+          {prettyUrl(short)}
+        </a>
+        <p className="truncate text-sm text-muted">
+          Goes to{" "}
+          <a href={s.link.url} target="_blank" rel="noreferrer" className="underline decoration-line underline-offset-2 hover:text-ink">
+            {prettyUrl(s.link.url)}
           </a>
-          <p className="truncate text-sm text-muted">
-            Goes to{" "}
-            <a href={s.link.url} target="_blank" rel="noreferrer" className="underline decoration-line underline-offset-2 hover:text-ink">
-              {prettyUrl(s.link.url)}
-            </a>
-          </p>
-          <p className="text-xs text-muted">Created {formatDate(s.link.createdAt)}</p>
-        </div>
-        <div className="flex gap-2">
-          <CopyButton text={short} />
-          <form action={deleteLink}>
-            <input type="hidden" name="id" value={s.link.id} />
-            <input type="hidden" name="redirectTo" value="dashboard" />
-            <button type="submit" className="btn-ghost text-danger">Delete</button>
-          </form>
-        </div>
-      </header>
+        </p>
+        <p className="text-xs text-muted">Created {formatDate(s.link.createdAt)}</p>
+      </LinkHeader>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold tracking-tight">Clicks</h2>
@@ -73,9 +76,9 @@ async function Stats({ params, searchParams }: PageProps<"/dashboard/links/[id]"
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr">
-        <StatCard label="All-time clicks" value={formatNumber(s.link.clickCount)} />
-        <StatCard label="Today" value={formatNumber(s.todayClicks)} hint="Since midnight" />
-        {range !== 1 && <StatCard label={rangeLabel(range)} value={formatNumber(s.rangeClicks)} />}
+        <StatCard label="All-time clicks" value={formatNumber(s.link.clickCount)} hint={`${formatNumber(s.allTimeVisitors)} unique ${s.allTimeVisitors === 1 ? "visitor" : "visitors"}`} />
+        <StatCard label="Today" value={formatNumber(s.todayClicks)} hint={`${formatNumber(s.todayVisitors)} unique ${s.todayVisitors === 1 ? "visitor" : "visitors"}`} />
+        {range !== 1 && <StatCard label={rangeLabel(range)} value={formatNumber(s.rangeClicks)} hint={`${formatNumber(s.rangeVisitors)} unique ${s.rangeVisitors === 1 ? "visitor" : "visitors"}`} />}
         <StatCard
           label="Top country"
           value={s.countries[0] ? countryName(s.countries[0].label) : "None yet"}

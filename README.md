@@ -94,7 +94,7 @@ Run `npm run build` locally with the production `.env`, then upload the project 
 | Redirect + click logging | `src/app/[slug]/route.ts` |
 | Country, platform, device, OS, browser, bot detection | `src/lib/tracking.ts` |
 | Login / signup / logout | `src/app/actions/auth.ts`, `src/lib/session.ts` |
-| Create / delete links, spam limits | `src/app/actions/links.ts`, `src/lib/links.ts` |
+| Create / edit / delete links, spam limits | `src/app/actions/links.ts`, `src/lib/links.ts` |
 | Stats queries | `src/lib/stats.ts` |
 | Database tables | `src/db/schema.ts` (same as `database/schema.sql`) |
 | Dashboard pages | `src/app/dashboard/` |
@@ -106,8 +106,9 @@ A few decisions worth knowing:
 - **Days follow the viewer's time zone.** The dashboard saves the browser's time zone in a `tz` cookie, so "today" and the bars on the chart start at your midnight, not UTC's. The Today tab shows clicks per hour.
 - **Repeat clicks are capped.** One person (one browser) counts at most `CLICKS_PER_VISITOR` times (default 3) per link every 24 hours. It's tracked with a cookie scoped to that short link, not by IP, so a different browser, an in-app browser or a private window counts again.
 - **Bots don't count.** Search crawlers and link-preview fetchers (WhatsApp, Telegram, Slack, Facebook...) are filtered with `isbot` plus an extra list.
-- **No IP addresses are stored.** Only country, platform, device, OS, browser and referring domain.
-- **Short-link lookups are cached in memory for 60 seconds.** A deleted link can keep redirecting for up to a minute. This assumes one app process (the PM2 setup above).
+- **No IP addresses are stored.** Only country, platform, device, OS, browser, referring domain and a random visitor id.
+- **Unique visitors** come from a random id in a `vid` cookie (one year, set on the first click from a browser). It isn't linked to anything about the person, so a private window or another browser counts as a new visitor. Clicks from before this was added have no id and count as one visitor each.
+- **Short-link lookups are cached in memory for 60 seconds** (`src/lib/link-cache.ts`). Editing or deleting a link clears its entry straight away. This assumes one app process (the PM2 setup above).
 - **WhatsApp and Telegram often show as "Direct".** Those apps usually open links in the phone's normal browser without a referrer. Every shortener has this gap. The fix is separate links per channel.
 
 ## Spam protection
@@ -127,6 +128,12 @@ npm run db:migrate    # applies it to the database in DATABASE_URL
 
 If you set the database up from `database/schema.sql`, the first migration (`drizzle/0000_init.sql`) is already applied. Use `db:migrate` only for new migrations, or apply new SQL files by hand in phpMyAdmin.
 
+When a change alters an existing table, there's also a plain SQL file for it in `database/upgrades/`, numbered in order. After `git pull`, run any you haven't run yet, once each:
+
+```bash
+mysql -h 127.0.0.1 -u linkuser -p shortly < database/upgrades/001-visitor-id.sql
+```
+
 ## Ideas for later
 
-QR codes per link, link expiry dates, password-protected links, editing a link's destination, unique visitors, CSV export, custom domains per user, a public API for the Android app, Google sign-in.
+QR codes per link, link expiry dates, password-protected links, CSV export, custom domains per user, a public API for the Android app, Google sign-in.

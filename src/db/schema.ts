@@ -57,8 +57,13 @@ export const clicks = mysqlTable(
     os: varchar("os", { length: 32 }).notNull(),
     browser: varchar("browser", { length: 32 }).notNull(),
     referrerHost: varchar("referrer_host", { length: 255 }),
+    // Random id from the visitor's "vid" cookie, for counting unique visitors.
+    // Not tied to an IP or anything else about the person. Null on clicks from
+    // before it was recorded.
+    visitorId: varchar("visitor_id", { length: 16 }),
   },
-  (t) => [index("clicks_link_time_idx").on(t.linkId, t.clickedAt)],
+  // visitor_id is in the index so unique-visitor counts don't read every row.
+  (t) => [index("clicks_link_time_idx").on(t.linkId, t.clickedAt, t.visitorId)],
 );
 
 export type User = typeof users.$inferSelect;
