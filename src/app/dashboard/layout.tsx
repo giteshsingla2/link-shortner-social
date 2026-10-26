@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { logout } from "@/app/actions/auth";
-import { LogoutIcon } from "@/components/icons";
+import { LogoutIcon, ShieldIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { TimeZoneCookie } from "@/components/time-zone-cookie";
@@ -24,12 +25,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between px-4 pt-4 pb-1 sm:px-6 lg:hidden">
           <Logo href="/dashboard" />
-          <form action={logout}>
-            <button type="submit" className="btn-ghost">
-              <LogoutIcon size={16} />
-              Log out
-            </button>
-          </form>
+          <div className="flex gap-2">
+            <Suspense fallback={null}>
+              <AdminLink />
+            </Suspense>
+            <form action={logout}>
+              <button type="submit" className="btn-ghost">
+                <LogoutIcon size={16} />
+                Log out
+              </button>
+            </form>
+          </div>
         </div>
         {children}
       </div>
@@ -44,8 +50,21 @@ async function Sidebar() {
   return (
     <SidebarNav
       user={{ name: user.name, email: user.email }}
-      links={links.map((l) => ({ id: l.id, slug: l.slug, url: l.url, title: l.title, todayClicks: l.todayClicks }))}
+      isAdmin={user.isAdmin}
+      links={links.map((l) => ({ id: l.id, slug: l.slug, url: l.url, title: l.title, todayClicks: l.todayClicks, disabled: Boolean(l.disabledAt) }))}
     />
+  );
+}
+
+/** Phones only: a way into the admin panel for admins. */
+async function AdminLink() {
+  const user = await getCurrentUser();
+  if (!user.isAdmin) return null;
+  return (
+    <Link href="/admin" className="btn-ghost">
+      <ShieldIcon size={16} />
+      Admin
+    </Link>
   );
 }
 

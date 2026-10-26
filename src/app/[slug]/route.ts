@@ -2,7 +2,7 @@ import { NextResponse, after, type NextRequest } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "@/db";
-import { clicks, links } from "@/db/schema";
+import { clicks, links, users } from "@/db/schema";
 import { cacheKey, linkCache } from "@/lib/link-cache";
 import { SLUG_PATTERN } from "@/lib/links";
 import { isBotRequest, parseClick } from "@/lib/tracking";
@@ -16,12 +16,18 @@ async function findLink(slug: string) {
   const hit = linkCache.get(key);
   if (hit && hit.expires > now) return hit.id ? hit : null;
 
-  const [row] = await db.select({ id: links.id, url: links.url }).from(links).where(eq(links.slug, slug)).limit(1);
+  const [row] = await db
+    .select({ id: links.id, url: links.url, linkDisabled: links.disabledAt, ownerSuspended: users.suspendedAt })
+    .from(links)
+    .innerJoin(users, eq(links.userId, users.id))
+    .where(eq(links.slug, slug))
+    .limit(1);
+  const link = row ? { id: row.id, url: row.url, disabled: Boolean(row.linkDisabled || row.ownerSuspended) } : null;
 
   if (linkCache.size >= CACHE_MAX_ENTRIES) linkCache.delete(linkCache.keys().next().value!);
   // Misses are cached too, so someone hammering random slugs can't flood the database.
-  linkCache.set(key, row ? { ...row, expires: now + CACHE_TTL_MS } : { id: 0, url: "", expires: now + CACHE_TTL_MS });
-  return row ?? null;
+  linkCache.set(key, link ? { ...link, expires: now + CACHE_TTL_MS } : { id: 0, url: "", disabled: false, expires: now + CACHE_TTL_MS });
+  return link;
 }
 
 /**
@@ -55,6 +61,8 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/[slug]">) {
 
   const link = await findLink(slug);
   if (!link) return notFound;
+  // Disabled by an admin: explain instead of redirecting, and don't count it as a click.
+  if (link.disabled) return NextResponse.redirect(new URL("/link-disabled", request.url), 302);
 
   // 302, not 301: browsers cache 301s and would skip us on repeat visits, losing those clicks.
   const response = NextResponse.redirect(link.url, 302);

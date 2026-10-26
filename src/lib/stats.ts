@@ -27,14 +27,14 @@ export function rangeLabel(days: RangeDays) {
  * distinct visitor ids, plus each click from before ids were recorded, since
  * those can't be told apart.
  */
-function visitors(when?: SQL) {
+export function visitors(when?: SQL) {
   const id = when ? sql`IF(${when}, ${clicks.visitorId}, NULL)` : sql`${clicks.visitorId}`;
   const legacy = when ? sql`${when} AND ${clicks.visitorId} IS NULL` : sql`${clicks.visitorId} IS NULL`;
   return sql<number>`COUNT(DISTINCT ${id}) + COALESCE(SUM(${legacy}), 0)`.mapWith(Number);
 }
 
 /** Clicks and unique visitors for the range, and for today within it. */
-async function totals(where: SQL | undefined, zone: Zone) {
+export async function totals(where: SQL | undefined, zone: Zone) {
   const isToday = gte(clicks.clickedAt, startOfDay(zone));
   const [row] = await db
     .select({
@@ -49,7 +49,7 @@ async function totals(where: SQL | undefined, zone: Zone) {
   return row;
 }
 
-async function breakdown(column: MySqlColumn, where: SQL | undefined, limit = 8): Promise<Breakdown> {
+export async function breakdown(column: MySqlColumn, where: SQL | undefined, limit = 8): Promise<Breakdown> {
   const rows = await db
     .select({ label: column, count: count() })
     .from(clicks)
@@ -62,7 +62,7 @@ async function breakdown(column: MySqlColumn, where: SQL | undefined, limit = 8)
 }
 
 /** Clicks per day in the viewer's zone, or per hour of today when the range is one day. */
-async function chartSeries(where: SQL | undefined, days: number, zone: Zone): Promise<ChartPoint[]> {
+export async function chartSeries(where: SQL | undefined, days: number, zone: Zone): Promise<ChartPoint[]> {
   const localTime = sql`CONVERT_TZ(${clicks.clickedAt}, '+00:00', ${zone.sqlOffset})`;
   const bucket = days === 1 ? sql<string>`LPAD(HOUR(${localTime}), 2, '0')` : sql<string>`DATE_FORMAT(${localTime}, '%Y-%m-%d')`;
 
@@ -103,6 +103,7 @@ export async function getUserLinks(userId: number, zone: Zone) {
       title: links.title,
       clickCount: links.clickCount,
       createdAt: links.createdAt,
+      disabledAt: links.disabledAt,
     })
     .from(links)
     .where(eq(links.userId, userId))

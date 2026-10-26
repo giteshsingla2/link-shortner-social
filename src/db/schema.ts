@@ -19,6 +19,8 @@ export const users = mysqlTable(
     email: varchar("email", { length: 255 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    // Set by an admin. A suspended user can't sign in and their links stop redirecting.
+    suspendedAt: datetime("suspended_at"),
   },
   (t) => [uniqueIndex("users_email_unique").on(t.email)],
 );
@@ -36,6 +38,8 @@ export const links = mysqlTable(
     // Running total so the dashboard list doesn't count rows on every load.
     clickCount: int("click_count", { unsigned: true }).notNull().default(0),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    // Set by an admin (spam, scams). A disabled link shows /link-disabled instead of redirecting.
+    disabledAt: datetime("disabled_at"),
   },
   (t) => [
     uniqueIndex("links_slug_unique").on(t.slug),

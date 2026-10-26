@@ -59,6 +59,12 @@ async function Stats({ params, searchParams }: PageProps<"/dashboard/links/[id]"
       </Toolbar>
 
       <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 sm:px-6 lg:px-8">
+        {s.link.disabledAt && (
+          <p role="status" className="card border-danger/30 px-5 py-3.5 text-sm text-danger">
+            This link was disabled by the site&apos;s administrators on {formatDate(s.link.disabledAt)}. Visitors see a &quot;link disabled&quot; page instead of
+            your destination, and clicks aren&apos;t counted.
+          </p>
+        )}
         <LinkHeader
           link={{ id: s.link.id, url: s.link.url, title: s.link.title }}
           actions={

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` varchar(255) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `suspended_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `users_email_unique` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `links` (
   `title` varchar(255) DEFAULT NULL,
   `click_count` int unsigned NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `disabled_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `links_slug_unique` (`slug`),
   KEY `links_user_idx` (`user_id`, `created_at`),

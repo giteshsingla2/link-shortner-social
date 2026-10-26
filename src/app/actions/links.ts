@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { links } from "@/db/schema";
 import { forgetLink } from "@/lib/link-cache";
-import { getSessionUserId } from "@/lib/session";
+import { requireActiveUserId } from "@/lib/auth";
 import { generateSlug, isUnsafeUrl, normalizeUrl, RESERVED_SLUGS, SLUG_PATTERN, shortUrl } from "@/lib/links";
 
 export type CreateLinkState =
@@ -23,9 +23,8 @@ const APP_HOST = (() => {
 })();
 
 export async function createLink(_prev: CreateLinkState, formData: FormData): Promise<CreateLinkState> {
-  // Server actions can be called directly, so check the session here too.
-  const userId = await getSessionUserId();
-  if (!userId) redirect("/login");
+  // Server actions can be called directly, so check the session (and that the account isn't suspended) here too.
+  const userId = await requireActiveUserId();
 
   const rawUrl = String(formData.get("url") ?? "");
   const rawSlug = String(formData.get("slug") ?? "").trim();
@@ -87,8 +86,7 @@ export type UpdateLinkState =
 
 /** Changes where a link goes (and its title). The short link, clicks and stats stay. */
 export async function updateLink(_prev: UpdateLinkState, formData: FormData): Promise<UpdateLinkState> {
-  const userId = await getSessionUserId();
-  if (!userId) redirect("/login");
+  const userId = await requireActiveUserId();
 
   const id = Number(formData.get("id"));
   const rawUrl = String(formData.get("url") ?? "");
@@ -123,8 +121,7 @@ export async function updateLink(_prev: UpdateLinkState, formData: FormData): Pr
 }
 
 export async function deleteLink(formData: FormData) {
-  const userId = await getSessionUserId();
-  if (!userId) redirect("/login");
+  const userId = await requireActiveUserId();
 
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return;

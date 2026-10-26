@@ -33,3 +33,15 @@ export function countryLabel(code: string) {
   // An en space, which HTML doesn't collapse like ordinary spaces.
   return flag ? `${flag}\u2002${countryName(code)}` : countryName(code);
 }
+
+/** "26 Oct, 9:41 AM" in the given time zone (the viewer's, for admin tables). */
+export function formatDateTime(d: Date | string, timeZone: string) {
+  return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone }).format(new Date(d));
+}
+
+/** Today against yesterday: "+25%", "−10%", "New" when yesterday was 0, "" when there's no change to show. */
+export function formatChange(today: number, yesterday: number) {
+  if (yesterday === 0) return today > 0 ? "New" : "";
+  const pct = Math.round(((today - yesterday) / yesterday) * 100);
+  return pct === 0 ? "" : pct > 0 ? `+${pct}%` : `−${Math.abs(pct)}%`;
+}

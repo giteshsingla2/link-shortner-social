@@ -50,7 +50,7 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   const { email, password } = parsed.data;
 
   const [user] = await db
-    .select({ id: users.id, passwordHash: users.passwordHash })
+    .select({ id: users.id, passwordHash: users.passwordHash, suspendedAt: users.suspendedAt })
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
@@ -58,6 +58,10 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   // Same message for unknown email and wrong password, so nobody can probe which emails exist.
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return { error: "Email or password is wrong.", fields: { email } };
+  }
+  // Only said after the password checks out, so it doesn't reveal which emails exist.
+  if (user.suspendedAt) {
+    return { error: "This account has been suspended. Contact the site owner if you think this is a mistake.", fields: { email } };
   }
 
   await createSession(user.id);

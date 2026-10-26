@@ -98,6 +98,7 @@ Run `npm run build` locally with the production `.env`, then upload the project 
 | Stats queries | `src/lib/stats.ts` |
 | Database tables | `src/db/schema.ts` (same as `database/schema.sql`) |
 | Dashboard pages | `src/app/dashboard/` |
+| Admin panel | `src/app/admin/`, `src/app/actions/admin.ts`, `src/lib/admin-stats.ts` |
 
 A few decisions worth knowing:
 
@@ -110,6 +111,17 @@ A few decisions worth knowing:
 - **Unique visitors** come from a random id in a `vid` cookie (one year, set on the first click from a browser). It isn't linked to anything about the person, so a private window or another browser counts as a new visitor. Clicks from before this was added have no id and count as one visitor each.
 - **Short-link lookups are cached in memory for 60 seconds** (`src/lib/link-cache.ts`). Editing or deleting a link clears its entry straight away. This assumes one app process (the PM2 setup above).
 - **WhatsApp and Telegram often show as "Direct".** Those apps usually open links in the phone's normal browser without a referrer. Every shortener has this gap. The fix is separate links per channel.
+
+## Admin panel
+
+Open `/admin` while signed in with an account whose email is in `ADMIN_EMAILS` (in `.env`, comma separated). Anyone else gets a 404. Admins are set only in `.env` on the server, so nothing inside the app can make someone an admin.
+
+- **Overview**: users, links and clicks across the site, clicks today and yesterday with unique visitors, a site-wide chart, top countries and platforms, every user's clicks today vs yesterday, and today's top links.
+- **Users**: search and sort everyone. Open a user to see their stats and links, **suspend** them (signed out at once, can't log in, all their links stop working), **set a new password** for someone locked out, or **delete** them with all their links and clicks.
+- **Links**: every link with its owner and today/yesterday clicks. **Disable** a link (visitors see "This link has been disabled", clicks aren't counted), enable it again, delete it, or open its full stats and latest clicks.
+- **Clicks**: the latest clicks on every link, filterable by today or yesterday and searchable by link or owner.
+
+Admin accounts can't be suspended, deleted or have their password changed from the panel.
 
 ## Spam protection
 

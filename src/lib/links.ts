@@ -7,7 +7,7 @@ export const generateSlug = customAlphabet("23456789abcdefghjkmnpqrstuvwxyzABCDE
 // Paths the app itself uses. A short link can't take these names.
 export const RESERVED_SLUGS = new Set([
   "dashboard", "login", "signup", "logout", "auth", "api", "admin", "settings",
-  "link-not-found", "_next", "favicon.ico", "robots.txt", "sitemap.xml", "about",
+  "link-not-found", "link-disabled", "_next", "favicon.ico", "robots.txt", "sitemap.xml", "about",
   "pricing", "terms", "privacy", "help", "support", "static", "public",
 ]);
 

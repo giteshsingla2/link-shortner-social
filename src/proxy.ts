@@ -16,15 +16,16 @@ async function hasValidSession(request: NextRequest) {
 }
 
 /**
- * Runs before /dashboard, /login and /signup render. It checks the session
- * signature only; getCurrentUser() still confirms the user exists.
+ * Runs before /dashboard, /admin, /login and /signup render. It checks the
+ * session signature only; getCurrentUser() still confirms the user exists, and
+ * requireAdmin() that they're an admin.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const signedIn = await hasValidSession(request);
 
   let response: NextResponse;
-  if (pathname.startsWith("/dashboard") && !signedIn) {
+  if ((pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) && !signedIn) {
     response = NextResponse.redirect(new URL("/login", request.url));
   } else if ((pathname === "/login" || pathname === "/signup") && signedIn) {
     response = NextResponse.redirect(new URL("/dashboard", request.url));
@@ -40,5 +41,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/signup"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/login", "/signup"],
 };

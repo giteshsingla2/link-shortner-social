@@ -15,6 +15,13 @@
       "when": 1792988392729,
       "tag": "0001_visitor_id",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1792995745751,
+      "tag": "0002_admin",
+      "breakpoints": true
     }
   ]
 }

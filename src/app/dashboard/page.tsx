@@ -114,9 +114,14 @@ async function LinksList() {
               <li key={l.id} className="flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl px-3 py-3 transition hover:bg-hover sm:flex-nowrap">
                 <LinkAvatar url={l.url} />
                 <div className="min-w-0 flex-1 basis-48">
-                  <Link href={stats} className="block truncate font-medium hover:underline">
-                    {l.title || prettyUrl(short)}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link href={stats} className="truncate font-medium hover:underline">
+                      {l.title || prettyUrl(short)}
+                    </Link>
+                    {l.disabledAt && (
+                      <span className="shrink-0 rounded-full bg-danger/12 px-2 py-0.5 text-[11px] font-semibold text-danger">Disabled by admin</span>
+                    )}
+                  </div>
                   <p className="truncate text-[13px] text-muted">
                     <a href={short} target="_blank" rel="noreferrer" className="font-mono text-link">
                       {prettyUrl(short)}

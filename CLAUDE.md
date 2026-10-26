@@ -22,9 +22,10 @@ Link shortener with per-click analytics. Next.js 16 App Router + MySQL (Drizzle 
 
 ## Rules
 
-- Every server action re-checks the session with `getSessionUserId()`. Every query on links filters by `userId` so users can only see or change their own links.
+- Every server action re-checks the session (`requireActiveUserId()` for a user's own links, which also rejects suspended accounts). Every query on links filters by `userId` so users can only see or change their own links.
+- Admins are the emails in `ADMIN_EMAILS`. Every `/admin` page and every action in `src/app/actions/admin.ts` calls `requireAdmin()` itself (404 for non-admins); the layout's check alone isn't enough, because layouts and pages render in parallel.
 - Redirects are 302, never 301 (301s get cached and clicks are lost).
 - Don't store visitor IP addresses.
 - Paths used by the app must be in `RESERVED_SLUGS` (`src/lib/links.ts`), because `src/app/[slug]/route.ts` catches every single-segment path not claimed by a page.
 - `ua-parser-js` is pinned to v1 on purpose: v2 is AGPL, which would require publishing the source of the hosted app.
-- Times are stored in UTC (`timezone: "Z"` on the pool; queries use `UTC_TIMESTAMP()`). Stats are shown in the viewer's zone: pages pass `getViewerZone()` (`src/lib/timezone.ts`) into `src/lib/stats.ts`, which uses `startOfDay()` for range starts and `CONVERT_TZ` for grouping.
+- Times are stored in UTC (`timezone: "Z"` on the pool, and every connection runs `SET time_zone = '+00:00'` so MySQL's own `CURRENT_TIMESTAMP` is UTC too; queries use `UTC_TIMESTAMP()`). Stats are shown in the viewer's zone: pages pass `getViewerZone()` (`src/lib/timezone.ts`) into `src/lib/stats.ts`, which uses `startOfDay()` for range starts and `CONVERT_TZ` for grouping.

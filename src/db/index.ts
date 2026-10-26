@@ -11,12 +11,19 @@ function createPool() {
   if (!url) {
     throw new Error("DATABASE_URL is not set. Copy .env.example to .env and fill it in.");
   }
-  return mysql.createPool({
+  const pool = mysql.createPool({
     uri: url,
     connectionLimit: 10,
     // Store and read all times as UTC so charts line up regardless of server timezone.
     timezone: "Z",
   });
+  // `timezone` above only affects how the driver converts dates. MySQL itself also
+  // needs to work in UTC, or DEFAULT CURRENT_TIMESTAMP and NOW() use the server's
+  // local time. This runs first on every new connection, before any app query.
+  pool.pool.on("connection", (conn) => {
+    conn.query("SET time_zone = '+00:00'");
+  });
+  return pool;
 }
 
 export const pool = globalForDb.pool ?? createPool();

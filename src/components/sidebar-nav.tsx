@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/app/actions/auth";
-import { AppsIcon, LogoutIcon, PlusIcon } from "./icons";
+import { AppsIcon, LogoutIcon, PlusIcon, ShieldIcon } from "./icons";
 import { LinkAvatar } from "./link-avatar";
 import { Logo } from "./logo";
 
-export type SidebarLink = { id: number; slug: string; url: string; title: string | null; todayClicks: number };
+export type SidebarLink = { id: number; slug: string; url: string; title: string | null; todayClicks: number; disabled: boolean };
 
 /**
  * The edge-to-edge glass sidebar, like Finder or Mail: app sections at the
  * top, every link below it, and the signed-in person at the bottom.
  */
-export function SidebarNav({ user, links }: { user: { name: string; email: string }; links: SidebarLink[] }) {
+export function SidebarNav({ user, links, isAdmin }: { user: { name: string; email: string }; links: SidebarLink[]; isAdmin: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -29,6 +29,11 @@ export function SidebarNav({ user, links }: { user: { name: string; email: strin
         <SidebarItem href="/dashboard#new" active={false} icon={<PlusIcon size={17} />}>
           New link
         </SidebarItem>
+        {isAdmin && (
+          <SidebarItem href="/admin" active={false} icon={<ShieldIcon size={17} />}>
+            Admin panel
+          </SidebarItem>
+        )}
       </nav>
 
       <div className="mt-6 flex items-baseline justify-between px-5 pb-1.5">
@@ -41,7 +46,7 @@ export function SidebarNav({ user, links }: { user: { name: string; email: strin
           const href = `/dashboard/links/${l.id}`;
           return (
             <SidebarItem key={l.id} href={href} active={pathname === href} icon={<LinkAvatar url={l.url} size={22} />}>
-              <span className="min-w-0 flex-1 truncate">{l.title || `/${l.slug}`}</span>
+              <span className={`min-w-0 flex-1 truncate ${l.disabled ? "text-muted line-through" : ""}`}>{l.title || `/${l.slug}`}</span>
               {l.todayClicks > 0 && (
                 <span className="rounded-full bg-accent-soft px-1.5 text-[11px] font-semibold text-link tabular-nums" title="Clicks today">
                   {l.todayClicks}
